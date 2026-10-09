@@ -1,0 +1,86 @@
+:root {
+  --blue: #0e3b6b;
+  --blue-dark: #0a2a4d;
+  --paper: #f5f7fa;
+  --surface: #ffffff;
+  --ink: #16202b;
+  --muted: #5d6b7c;
+  --rule: #d3dae4;
+  --signal: #f2b01e;
+  --red: #b3261e;
+  --green: #1d7a45;
+  --amber-text: #8a5a00;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink);
+  font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; line-height: 1.5;
+}
+h1 { font-size: 1.5rem; margin: 0 0 1rem; }
+main { max-width: 960px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+
+.topbar {
+  background: var(--blue); color: #fff; display: flex; align-items: center; gap: 2rem;
+  padding: 0.75rem 1.5rem; border-bottom: 4px solid var(--signal); flex-wrap: wrap;
+}
+.topbar a { color: #fff; text-decoration: none; }
+.brand { font-weight: 700; font-size: 1.15rem; }
+.topbar nav { display: flex; gap: 1.25rem; flex: 1; }
+.topbar nav a { padding: 0.25rem 0; border-bottom: 2px solid transparent; opacity: 0.85; }
+.topbar nav a.active { border-bottom-color: var(--signal); opacity: 1; }
+.who { display: flex; gap: 0.75rem; align-items: center; }
+.who .link { color: #fff; }
+
+.panel { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 1.25rem; margin-bottom: 1.25rem; }
+.panel.narrow { max-width: 420px; margin: 2rem auto; }
+.stack { display: grid; gap: 1rem; }
+
+label { display: grid; gap: 0.25rem; font-size: 0.875rem; font-weight: 600; color: var(--muted); }
+input, select {
+  font: inherit; color: var(--ink); padding: 0.55rem 0.65rem; border: 1px solid var(--rule);
+  border-radius: 4px; background: #fff; min-width: 0;
+}
+input:focus-visible, select:focus-visible, button:focus-visible, a:focus-visible {
+  outline: 3px solid var(--signal); outline-offset: 2px;
+}
+.searchbar { display: grid; grid-template-columns: 1fr 1fr 180px auto; gap: 0.75rem; align-items: end; }
+
+button { font: inherit; cursor: pointer; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+.primary { background: var(--blue); color: #fff; border: 0; padding: 0.6rem 1.1rem; border-radius: 4px; font-weight: 600; }
+.primary:hover:not(:disabled) { background: var(--blue-dark); }
+.danger { background: #fff; color: var(--red); border: 1px solid var(--red); padding: 0.4rem 0.8rem; border-radius: 4px; font-weight: 600; }
+.danger:hover { background: #fdecea; }
+.link { background: none; border: 0; padding: 0; color: var(--blue); text-decoration: underline; }
+
+.error { color: var(--red); margin: 0.75rem 0 0; font-weight: 600; }
+.muted { color: var(--muted); font-size: 0.875rem; }
+
+.results, .panel > .ticket { display: grid; gap: 0.75rem; }
+.train, .ticket { background: var(--surface); border: 1px solid var(--rule); border-left: 4px solid var(--blue); border-radius: 6px; padding: 1rem; }
+.panel > .ticket { margin-top: 0.75rem; }
+.ticket.cancelled { border-left-color: var(--rule); opacity: 0.75; }
+.trainrow { display: grid; grid-template-columns: 2fr 1.4fr 1fr 1fr auto; gap: 1rem; align-items: center; }
+.id { display: grid; }
+.times { display: grid; font-variant-numeric: tabular-nums; font-weight: 600; }
+.times .muted { font-weight: 400; }
+.fare { font-weight: 700; }
+.fare .muted { font-weight: 400; display: block; }
+.ok { color: var(--green); font-weight: 600; }
+.low { color: var(--amber-text); font-weight: 600; }
+.full { color: var(--red); font-weight: 600; }
+.status { font-weight: 600; font-size: 0.875rem; }
+.status.confirmed { color: var(--green); }
+.status.cancelled { color: var(--muted); }
+
+.book { margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed var(--rule); display: grid; gap: 0.75rem; }
+.pax { display: grid; grid-template-columns: 1fr 100px auto; gap: 0.75rem; align-items: end; }
+.row { display: flex; gap: 1rem; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-top: 0.5rem; }
+.book .row { margin-top: 0; }
+.total { margin-left: auto; font-weight: 700; }
+
+@media (max-width: 720px) {
+  .searchbar, .trainrow { grid-template-columns: 1fr; }
+  .pax { grid-template-columns: 1fr 80px; }
+  .topbar { gap: 0.75rem; }
+}
