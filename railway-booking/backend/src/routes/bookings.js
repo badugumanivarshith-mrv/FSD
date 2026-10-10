@@ -18,10 +18,20 @@ router.post('/', wrap(async (req, res) => {
   if (!Array.isArray(passengers) || passengers.length < 1 || passengers.length > MAX_PASSENGERS) {
     return res.status(400).json({ error: `Add 1 to ${MAX_PASSENGERS} passengers` });
   }
-  const clean = passengers.map((p) => ({ name: String(p?.name || '').trim(), age: Number(p?.age) }));
-  if (clean.some((p) => !p.name || !Number.isInteger(p.age) || p.age < 1 || p.age > 120)) {
-    return res.status(400).json({ error: 'Each passenger needs a name and an age between 1 and 120' });
+  const clean = passengers.map((p) => ({
+    name: String(p?.name || '').trim(),
+    age: Number(p?.age),
+    seatNumber: Number(p?.seatNumber),
+  }));
+  if (clean.some((p) => !p.name || !Number.isInteger(p.age) || p.age < 1 || p.age > 120 || !Number.isInteger(p.seatNumber) || p.seatNumber < 1)) {
+    return res.status(400).json({ error: 'Each passenger needs a valid name, age (1-120), and a selected seat number' });
   }
+
+  const reqSeats = clean.map((p) => p.seatNumber);
+  if (new Set(reqSeats).size !== reqSeats.length) {
+    return res.status(400).json({ error: 'Duplicate seat selection found in request' });
+  }
+
   if (await isPastDate(journeyDate)) return res.status(400).json({ error: 'Travel date is in the past' });
 
   const client = await pool.connect();
@@ -35,15 +45,24 @@ router.post('/', wrap(async (req, res) => {
       await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Train not found' });
     }
-    const { booked } = (await client.query(
-      `SELECT COALESCE(SUM(seat_count), 0)::int AS booked FROM bookings
-       WHERE train_id = $1 AND journey_date = $2 AND status = 'CONFIRMED'`,
-      [trainId, journeyDate]
-    )).rows[0];
-    const available = train.total_seats - booked;
-    if (available < clean.length) {
+
+    if (reqSeats.some((s) => s > train.total_seats)) {
       await client.query('ROLLBACK');
-      return res.status(409).json({ error: available > 0 ? `Only ${available} seat(s) left` : 'No seats left on this date' });
+      return res.status(400).json({ error: `Seat numbers cannot exceed total seats (${train.total_seats})` });
+    }
+
+    // Check which seats are already booked
+    const existingBookedRes = await client.query(
+      `SELECT DISTINCT p.seat_number FROM passengers p
+       JOIN bookings b ON b.id = p.booking_id
+       WHERE b.train_id = $1 AND b.journey_date = $2 AND b.status = 'CONFIRMED'`,
+      [trainId, journeyDate]
+    );
+    const existingSet = new Set(existingBookedRes.rows.map((r) => r.seat_number));
+    const conflictSeat = reqSeats.find((s) => existingSet.has(s));
+    if (conflictSeat) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: `Seat #${conflictSeat} is already booked. Please choose another seat.` });
     }
 
     const total = Number(train.fare_per_seat) * clean.length;
@@ -54,7 +73,10 @@ router.post('/', wrap(async (req, res) => {
       [pnr, req.user.id, trainId, journeyDate, clean.length, total]
     )).rows[0];
     for (const p of clean) {
-      await client.query('INSERT INTO passengers (booking_id, name, age) VALUES ($1,$2,$3)', [booking.id, p.name, p.age]);
+      await client.query(
+        'INSERT INTO passengers (booking_id, name, age, seat_number) VALUES ($1,$2,$3,$4)',
+        [booking.id, p.name, p.age, p.seatNumber]
+      );
     }
     await client.query('COMMIT');
     res.status(201).json({ booking });
@@ -71,7 +93,7 @@ router.get('/', wrap(async (req, res) => {
     `SELECT b.id, b.pnr, b.journey_date::text AS journey_date, b.seat_count, b.total_fare, b.status,
             t.number AS train_number, t.name AS train_name, t.departs, t.arrives,
             s.name AS source, d.name AS destination,
-            (SELECT json_agg(json_build_object('name', p.name, 'age', p.age) ORDER BY p.id)
+            (SELECT json_agg(json_build_object('name', p.name, 'age', p.age, 'seatNumber', p.seat_number) ORDER BY p.seat_number)
                FROM passengers p WHERE p.booking_id = b.id) AS passengers,
             (b.status = 'CONFIRMED' AND b.journey_date >= CURRENT_DATE) AS cancellable
      FROM bookings b

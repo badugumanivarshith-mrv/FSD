@@ -46,5 +46,6 @@ CREATE TABLE passengers (
   id SERIAL PRIMARY KEY,
   booking_id INT NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
-  age INT NOT NULL CHECK (age BETWEEN 1 AND 120)
+  age INT NOT NULL CHECK (age BETWEEN 1 AND 120),
+  seat_number INT NOT NULL CHECK (seat_number > 0)
 );

@@ -36,4 +36,41 @@ router.get('/trains/search', wrap(async (req, res) => {
   res.json({ trains: rows });
 }));
 
+router.get('/trains/:id/seats', wrap(async (req, res) => {
+  const trainId = Number(req.params.id);
+  const date = String(req.query.date || '');
+  if (!Number.isInteger(trainId)) return res.status(400).json({ error: 'Invalid train ID' });
+  if (!DATE_RE.test(date)) return res.status(400).json({ error: 'Invalid or missing journey date' });
+  if (await isPastDate(date)) return res.status(400).json({ error: 'Travel date is in the past' });
+
+  const trainRes = await pool.query(
+    `SELECT t.id, t.number, t.name, t.total_seats, t.fare_per_seat, t.departs, t.arrives,
+            s.name AS source, d.name AS destination
+     FROM trains t
+     JOIN stations s ON s.id = t.source_id
+     JOIN stations d ON d.id = t.dest_id
+     WHERE t.id = $1`,
+    [trainId]
+  );
+  if (trainRes.rows.length === 0) return res.status(404).json({ error: 'Train not found' });
+  const train = trainRes.rows[0];
+
+  const bookedRes = await pool.query(
+    `SELECT DISTINCT p.seat_number
+     FROM passengers p
+     JOIN bookings b ON b.id = p.booking_id
+     WHERE b.train_id = $1 AND b.journey_date = $2 AND b.status = 'CONFIRMED'
+     ORDER BY p.seat_number`,
+    [trainId, date]
+  );
+  const bookedSeats = bookedRes.rows.map((r) => r.seat_number);
+
+  res.json({
+    train,
+    bookedSeats,
+    totalSeats: train.total_seats,
+    availableSeatsCount: train.total_seats - bookedSeats.length,
+  });
+}));
+
 export default router;

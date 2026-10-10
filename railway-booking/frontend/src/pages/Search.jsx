@@ -2,70 +2,11 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth } from '../AuthContext.jsx';
+import SeatMap from '../components/SeatMap.jsx';
 
 const today = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 const hhmm = (t) => String(t).slice(0, 5);
 const money = (n) => '₹' + Number(n).toLocaleString('en-IN');
-
-function BookPanel({ train, date, onDone }) {
-  const [passengers, setPassengers] = useState([{ name: '', age: '' }]);
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
-  const max = Math.min(6, train.available_seats);
-
-  const update = (i, k, v) => setPassengers(passengers.map((p, idx) => (idx === i ? { ...p, [k]: v } : p)));
-
-  async function confirm(e) {
-    e.preventDefault();
-    setError('');
-    setBusy(true);
-    try {
-      await api('/bookings', {
-        method: 'POST',
-        body: {
-          trainId: train.id,
-          journeyDate: date,
-          passengers: passengers.map((p) => ({ name: p.name, age: Number(p.age) })),
-        },
-      });
-      onDone();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <form className="book" onSubmit={confirm}>
-      {passengers.map((p, i) => (
-        <div className="pax" key={i}>
-          <label>Passenger {i + 1}
-            <input value={p.name} onChange={(e) => update(i, 'name', e.target.value)} required />
-          </label>
-          <label>Age
-            <input type="number" min="1" max="120" value={p.age} onChange={(e) => update(i, 'age', e.target.value)} required />
-          </label>
-          {passengers.length > 1 && (
-            <button type="button" className="link" onClick={() => setPassengers(passengers.filter((_, idx) => idx !== i))}>
-              Remove
-            </button>
-          )}
-        </div>
-      ))}
-      <div className="row">
-        {passengers.length < max && (
-          <button type="button" className="link" onClick={() => setPassengers([...passengers, { name: '', age: '' }])}>
-            Add passenger
-          </button>
-        )}
-        <span className="total">Total {money(train.fare_per_seat * passengers.length)}</span>
-        <button className="primary" disabled={busy}>Confirm booking</button>
-      </div>
-      {error && <p className="error" role="alert">{error}</p>}
-    </form>
-  );
-}
 
 export default function Search() {
   const { user } = useAuth();
@@ -146,11 +87,18 @@ export default function Search() {
                 </div>
                 <div className="fare">{money(t.fare_per_seat)}<span className="muted"> per seat</span></div>
                 <button className="primary" disabled={t.available_seats === 0} onClick={() => startBooking(t.id)}>
-                  {openId === t.id ? 'Close' : 'Book'}
+                  {openId === t.id ? 'Close Map' : 'Select Seats & Book'}
                 </button>
               </div>
               {openId === t.id && (
-                <BookPanel train={t} date={searchedDate} onDone={() => navigate('/bookings')} />
+                <div className="seat-selection-wrapper">
+                  <SeatMap
+                    trainId={t.id}
+                    date={searchedDate}
+                    farePerSeat={t.fare_per_seat}
+                    onBookingSuccess={() => navigate('/bookings')}
+                  />
+                </div>
               )}
             </article>
           ))}
